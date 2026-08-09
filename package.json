@@ -1,0 +1,28 @@
+{
+  "name": "work-chat",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "predev": "pnpm --filter @work-chat/contracts build",
+    "dev": "concurrently -n api,realtime,web -c cyan,magenta,green \"pnpm --filter @work-chat/api dev\" \"pnpm --filter @work-chat/realtime dev\" \"pnpm --filter @work-chat/web dev\"",
+    "dev:infra": "docker compose up -d postgres redis nats minio",
+    "lint": "pnpm -r --if-present lint",
+    "pretest": "pnpm --filter @work-chat/contracts build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "concurrently": "latest",
+    "eslint": "latest",
+    "globals": "latest",
+    "prettier": "latest",
+    "typescript": "6.0.2",
+    "typescript-eslint": "latest"
+  }
+}

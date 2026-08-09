@@ -1,0 +1,11 @@
+{
+  "name": "Work Chat",
+  "short_name": "WorkChat",
+  "description": "Рабочий контекст IT-команды",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#11130f",
+  "theme_color": "#d6ff52",
+  "icons": []
+}
+

@@ -1,0 +1,39 @@
+{
+  "name": "@work-chat/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src test --max-warnings 0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cors": "latest",
+    "@fastify/static": "9.0.0",
+    "@nestjs/common": "latest",
+    "@nestjs/config": "latest",
+    "@nestjs/core": "latest",
+    "@nestjs/platform-fastify": "latest",
+    "@nestjs/swagger": "latest",
+    "@work-chat/contracts": "workspace:*",
+    "fastify": "5.10.0",
+    "jose": "latest",
+    "nats": "latest",
+    "pg": "latest",
+    "reflect-metadata": "latest",
+    "rxjs": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "latest",
+    "@types/node": "latest",
+    "@types/pg": "latest",
+    "supertest": "latest",
+    "tsx": "latest",
+    "vitest": "latest"
+  }
+}
