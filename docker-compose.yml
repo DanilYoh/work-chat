@@ -11,7 +11,10 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./infra/postgres/migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
-      - ./infra/postgres/seed.sql:/docker-entrypoint-initdb.d/002_seed.sql:ro
+      - ./infra/postgres/migrations/002_message_interactions.sql:/docker-entrypoint-initdb.d/002_message_interactions.sql:ro
+      - ./infra/postgres/migrations/003_preserve_event_history.sql:/docker-entrypoint-initdb.d/003_preserve_event_history.sql:ro
+      - ./infra/postgres/migrations/004_quarantine_oversized_events.sql:/docker-entrypoint-initdb.d/004_quarantine_oversized_events.sql:ro
+      - ./infra/postgres/seed.sql:/docker-entrypoint-initdb.d/005_seed.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U workchat -d workchat"]
       interval: 5s

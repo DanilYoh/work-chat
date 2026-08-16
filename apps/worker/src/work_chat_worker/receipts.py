@@ -24,9 +24,18 @@ class ReceiptStore:
     async def process_once(self, tenant_id: UUID, event_id: UUID) -> AsyncIterator[bool]:
         if not self._pool:
             fresh = event_id not in self._memory
-            if fresh:
-                self._memory.add(event_id)
-            yield fresh
+            if not fresh:
+                yield False
+                return
+
+            self._memory.add(event_id)
+            succeeded = False
+            try:
+                yield True
+                succeeded = True
+            finally:
+                if not succeeded:
+                    self._memory.discard(event_id)
             return
 
         async with self._pool.acquire() as connection, connection.transaction():
@@ -43,4 +52,3 @@ class ReceiptStore:
                 event_id,
             )
             yield result is not None
-

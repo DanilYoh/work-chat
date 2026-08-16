@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/main.ts",
+    "migrate": "tsx scripts/migrate.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src test --max-warnings 0",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p scripts/tsconfig.json --noEmit",
+    "lint": "eslint src test scripts --max-warnings 0",
     "test": "vitest run"
   },
   "dependencies": {

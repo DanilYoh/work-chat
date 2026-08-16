@@ -11,6 +11,24 @@ permissions:
 jobs:
   typescript:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: workchat
+          POSTGRES_USER: workchat
+          POSTGRES_PASSWORD: workchat
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U workchat -d workchat"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      POSTGRES_INTEGRATION_ADMIN_URL: postgresql://workchat:workchat@127.0.0.1:5432/workchat
+      POSTGRES_INTEGRATION_APP_URL: postgresql://workchat_app_local:workchat-app-local@127.0.0.1:5432/workchat
+      MIGRATION_DATABASE_URL: postgresql://workchat:workchat@127.0.0.1:5432/workchat
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -21,6 +39,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
       - run: pnpm check
 
   python:
