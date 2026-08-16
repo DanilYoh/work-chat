@@ -108,6 +108,9 @@ importers:
       nats:
         specifier: latest
         version: 2.29.3
+      pg:
+        specifier: latest
+        version: 8.23.0
       ws:
         specifier: latest
         version: 8.21.3
@@ -115,6 +118,9 @@ importers:
       '@types/node':
         specifier: latest
         version: 26.2.0
+      '@types/pg':
+        specifier: latest
+        version: 8.21.0
       '@types/ws':
         specifier: latest
         version: 8.18.1

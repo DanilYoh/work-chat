@@ -1,4 +1,11 @@
+BEGIN;
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  id text PRIMARY KEY,
+  applied_at timestamptz NOT NULL DEFAULT now()
+);
 
 CREATE TYPE membership_role AS ENUM ('owner', 'admin', 'member');
 CREATE TYPE channel_kind AS ENUM ('public', 'private', 'dm', 'group_dm');
@@ -188,3 +195,8 @@ CREATE POLICY tenant_isolation_idempotency ON idempotency_keys USING (tenant_id 
 CREATE POLICY tenant_isolation_audit_events ON audit_events USING (tenant_id = current_setting('app.tenant_id', true)::uuid) WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
 CREATE POLICY tenant_isolation_worker_receipts ON worker_receipts USING (tenant_id = current_setting('app.tenant_id', true)::uuid) WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
 
+INSERT INTO schema_migrations (id)
+VALUES ('001_initial')
+ON CONFLICT (id) DO NOTHING;
+
+COMMIT;

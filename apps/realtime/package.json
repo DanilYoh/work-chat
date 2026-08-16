@@ -15,13 +15,14 @@
     "@work-chat/contracts": "workspace:*",
     "jose": "latest",
     "nats": "latest",
+    "pg": "latest",
     "ws": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
+    "@types/pg": "latest",
     "@types/ws": "latest",
     "tsx": "latest",
     "vitest": "latest"
   }
 }
-
