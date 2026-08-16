@@ -1,14 +1,22 @@
 import {
   bootstrapResponseSchema,
   domainEventSchema,
+  messageThreadSchema,
   messageSchema,
+  readStateSchema,
   workItemSchema,
   type BootstrapResponse,
   type CreateMessageInput,
   type CreateWorkItemInput,
   type CursorPage,
+  type DeleteMessageInput,
   type DomainEvent,
   type Message,
+  type MessageThread,
+  type ReactionInput,
+  type ReadState,
+  type UpdateMessageInput,
+  type UpdateReadStateInput,
   type WorkItem,
 } from '@work-chat/contracts';
 import { z } from 'zod';
@@ -36,17 +44,66 @@ async function request<T>(path: string, schema: z.ZodType<T>, options?: RequestI
   return schema.parse(body);
 }
 
-const messagePageSchema = z.object({ items: z.array(messageSchema), nextCursor: z.string().nullable() });
-const eventPageSchema = z.object({ items: z.array(domainEventSchema), nextCursor: z.string().nullable() });
+const messagePageSchema = z.object({
+  items: z.array(messageSchema),
+  nextCursor: z.string().nullable(),
+});
+const eventPageSchema = z.object({
+  items: z.array(domainEventSchema),
+  nextCursor: z.string().nullable(),
+});
 
 export const api = {
   bootstrap: (): Promise<BootstrapResponse> => request('/v1/bootstrap', bootstrapResponseSchema),
-  messages: (channelId: string): Promise<CursorPage<Message>> =>
-    request(`/v1/channels/${channelId}/messages`, messagePageSchema),
+  messages: (channelId: string, cursor?: string): Promise<CursorPage<Message>> =>
+    request(
+      `/v1/channels/${channelId}/messages${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+      messagePageSchema,
+    ),
   sendMessage: (channelId: string, input: CreateMessageInput): Promise<Message> =>
     request(`/v1/channels/${channelId}/messages`, messageSchema, {
       method: 'POST',
       headers: { 'Idempotency-Key': input.clientId },
+      body: JSON.stringify(input),
+    }),
+  editMessage: (
+    messageId: string,
+    input: UpdateMessageInput,
+    idempotencyKey: string,
+  ): Promise<Message> =>
+    request(`/v1/messages/${messageId}`, messageSchema, {
+      method: 'PATCH',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(input),
+    }),
+  deleteMessage: (
+    messageId: string,
+    input: DeleteMessageInput,
+    idempotencyKey: string,
+  ): Promise<Message> =>
+    request(`/v1/messages/${messageId}`, messageSchema, {
+      method: 'DELETE',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(input),
+    }),
+  addReaction: (messageId: string, input: ReactionInput): Promise<Message> =>
+    request(`/v1/messages/${messageId}/reactions`, messageSchema, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
+  removeReaction: (messageId: string, input: ReactionInput): Promise<Message> =>
+    request(`/v1/messages/${messageId}/reactions`, messageSchema, {
+      method: 'DELETE',
+      body: JSON.stringify(input),
+    }),
+  thread: (rootId: string, cursor?: string): Promise<MessageThread> =>
+    request(
+      `/v1/messages/${rootId}/thread${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+      messageThreadSchema,
+    ),
+  markRead: (channelId: string, input: UpdateReadStateInput): Promise<ReadState> =>
+    request(`/v1/channels/${channelId}/read-state`, readStateSchema, {
+      method: 'PUT',
       body: JSON.stringify(input),
     }),
   workItems: (channelId?: string): Promise<WorkItem[]> =>
@@ -59,4 +116,3 @@ export const api = {
   sync: (cursor?: string): Promise<CursorPage<DomainEvent>> =>
     request(`/v1/sync${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`, eventPageSchema),
 };
-
