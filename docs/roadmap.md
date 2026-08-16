@@ -7,7 +7,7 @@
 - [x] Idempotency, cursor sync, JetStream event log и Python worker.
 - [x] Decision/action/incident/release/code-change objects.
 - [x] Keycloak и LiveKit local profiles.
-- [ ] Message edit/delete/reactions, полноценные thread views и read state.
+- [x] Message edit/delete/reactions, полноценные thread views и read state.
 - [ ] Attachments: presigned upload, quota, ClamAV, thumbnails.
 
 Gate: двухнедельное внутреннее использование без потери сообщений и cross-tenant доступа.
@@ -42,4 +42,3 @@ Gate: пять платящих организаций, SLO dashboards и отс
 4. Activation/retention analytics без сбора содержимого сообщений.
 
 После GA: on-prem, SCIM/CMK, гости/shared spaces, AI с источниками, workflow builder и запись звонков.
-

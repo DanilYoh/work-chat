@@ -8,7 +8,7 @@
 
 - Адаптивная React PWA с каналами, сообщениями, code blocks и панелью рабочего контекста.
 - NestJS/Fastify API `/v1`, OpenAPI на `/docs` и единый error envelope.
-- Idempotent message creation, последовательность сообщений, cursor pagination и `/v1/sync`.
+- Idempotent message create/edit/delete, реакции, треды, read state, cursor pagination и `/v1/sync`.
 - Преобразование сообщения в `Decision`, `Action`, `Incident`, `Release` или `CodeChange`.
 - Отдельный WebSocket gateway с проверкой tenant/user audience.
 - PostgreSQL-схема с tenant ID, RLS, ревизиями, audit log и transactional event log.
@@ -17,7 +17,7 @@
 - Локальные PostgreSQL, Redis, NATS, MinIO; профили для OpenSearch, Keycloak и LiveKit.
 - OIDC/JWT validation для production и изолированный dev-auth режим.
 
-Пока не реализованы: вложения, edit/delete/reactions API, полноценные треды, mobile/desktop shells, внешние интеграции, уведомления и звонки. Они остаются следующими инкрементами, описанными в [roadmap](docs/roadmap.md).
+Пока не реализованы: вложения, mobile/desktop shells, внешние интеграции, уведомления и звонки. Они остаются следующими инкрементами, описанными в [roadmap](docs/roadmap.md).
 
 ## Быстрый запуск без Docker
 
@@ -39,6 +39,10 @@ $env:STORE_MODE='postgres'
 $env:NATS_URL='nats://localhost:4222'
 pnpm dev
 ```
+
+`dev:infra` ждёт готовности сервисов и запускает `pnpm db:migrate`, поэтому команда безопасно обновляет и существующий PostgreSQL volume. В production задайте отдельный `MIGRATION_DATABASE_URL` для schema-owner; runtime API продолжает использовать ограниченную роль из `DATABASE_URL`.
+
+Production NATS должен иметь `max_payload` не меньше 1 000 000 байт (стандартный лимит 1 MiB подходит). При меньшем значении API оставляет события в outbox и использует `/sync`, пока конфигурация не исправлена, вместо потери worker/realtime delivery.
 
 Дополнительные локальные контуры:
 
@@ -72,6 +76,11 @@ docker compose config --quiet
 - `GET /v1/bootstrap` — текущая организация и дерево навигации.
 - `GET /v1/channels/:id/messages?cursor=` — сообщения канала.
 - `POST /v1/channels/:id/messages` — отправка с обязательным `Idempotency-Key`.
+- `PATCH /v1/messages/:id` — редактирование с `expectedRevision` и обязательным `Idempotency-Key`.
+- `DELETE /v1/messages/:id` — terminal tombstone с `expectedRevision` и обязательным `Idempotency-Key`.
+- `PUT|DELETE /v1/messages/:id/reactions` — добавить или убрать реакцию.
+- `GET /v1/messages/:id/thread?cursor=` — корень и страница ответов треда.
+- `PUT /v1/channels/:id/read-state` — монотонно обновить прочитанную sequence.
 - `POST /v1/messages/:id/work-items` — создать рабочий объект из сообщения.
 - `GET /v1/work-items?channelId=` — контекст канала.
 - `GET /v1/sync?cursor=` — восстановить события после offline/reconnect.
@@ -84,4 +93,3 @@ Dev-auth принимает `x-tenant-id` и `x-user-id`. Его нельзя в
 - [Архитектура и гарантии](docs/architecture.md)
 - [Дорожная карта реализации](docs/roadmap.md)
 - [Модель угроз](docs/threat-model.md)
-
