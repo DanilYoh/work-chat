@@ -917,6 +917,19 @@ export function App() {
           <div className="date-divider">
             <span>Сегодня</span>
           </div>
+          {workspace.messageCursor && !workspace.error && (
+            <button
+              type="button"
+              className="load-more timeline-load-more"
+              disabled={workspace.messagesLoadingMore}
+              onClick={() => {
+                void workspace.loadMoreMessages();
+              }}
+            >
+              {workspace.messagesLoadingMore ? <LoaderCircle className="spin" size={14} /> : null}
+              Загрузить предыдущие сообщения
+            </button>
+          )}
           {timeline.map((message) => (
             <Fragment key={message.id}>
               {message.id === firstUnreadId && (
@@ -938,19 +951,6 @@ export function App() {
           )}
           {!workspace.error && !workspace.loading && timeline.length === 0 && (
             <div className="empty">Здесь пока тихо. Начните обсуждение.</div>
-          )}
-          {workspace.messageCursor && !workspace.error && (
-            <button
-              type="button"
-              className="load-more timeline-load-more"
-              disabled={workspace.messagesLoadingMore}
-              onClick={() => {
-                void workspace.loadMoreMessages();
-              }}
-            >
-              {workspace.messagesLoadingMore ? <LoaderCircle className="spin" size={14} /> : null}
-              Загрузить ещё сообщения
-            </button>
           )}
         </div>
         <Composer

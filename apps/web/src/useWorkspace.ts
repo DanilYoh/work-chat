@@ -528,10 +528,6 @@ export function useWorkspace() {
         roots.reduce((merged, root) => upsertMessage(merged, root, 'full', true), current),
       );
       setMessageCursor(page.nextCursor);
-      const visibleSequence = roots.at(-1)?.sequence;
-      if (visibleSequence !== undefined) {
-        await markRead(channelId, visibleSequence);
-      }
     } catch (cause) {
       if (activeChannelIdRef.current === channelId) {
         setError(cause instanceof Error ? cause.message : 'Не удалось загрузить сообщения');
@@ -539,7 +535,7 @@ export function useWorkspace() {
     } finally {
       if (activeChannelIdRef.current === channelId) setMessagesLoadingMore(false);
     }
-  }, [activeChannelId, markRead, messageCursor, messagesLoadingMore]);
+  }, [activeChannelId, messageCursor, messagesLoadingMore]);
 
   const reloadChannel = useCallback(() => setChannelReloadToken((current) => current + 1), []);
 

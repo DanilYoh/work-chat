@@ -8,6 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AppContext } from '../src/common/context.js';
+import { decodeCursor } from '../src/common/cursor.js';
 import { PostgresStore } from '../src/store/postgres.store.js';
 
 const ADMIN_URL = process.env.POSTGRES_INTEGRATION_ADMIN_URL;
@@ -257,13 +258,13 @@ describe.skipIf(!enabled)('PostgresStore integration', () => {
 
   it('enforces RLS, explicit tenant predicates, and private-channel membership', async () => {
     await expect(
-      store.listMessages(context(IDS.outsider), IDS.incidents, 0, 50),
+      store.listMessages(context(IDS.outsider), IDS.incidents, null, 50),
     ).rejects.toMatchObject({ status: 403 });
 
     // The owner belongs to both organizations, so this catches a missing tenant predicate
     // rather than merely relying on user membership to reject the channel.
     await expect(
-      store.listMessages(context(IDS.owner), IDS.otherChannel, 0, 50),
+      store.listMessages(context(IDS.owner), IDS.otherChannel, null, 50),
     ).rejects.toMatchObject({ status: 403 });
 
     const client = await appPool.connect();
@@ -279,6 +280,50 @@ describe.skipIf(!enabled)('PostgresStore integration', () => {
       await client.query('ROLLBACK');
     } finally {
       client.release();
+    }
+  });
+
+  it('starts channel history with the newest page and paginates backward', async () => {
+    const owner = context(IDS.owner);
+    const channelId = randomUUID();
+    await admin.query(
+      `
+      INSERT INTO channels (id, tenant_id, name, slug, description, kind, next_sequence)
+      VALUES ($1, $2, 'Pagination regression', $3, '', 'public', 0)
+    `,
+      [channelId, IDS.tenant, `pagination-${runId}`],
+    );
+
+    try {
+      const oldest = await store.createMessage(owner, channelId, key('postgres-history-oldest'), {
+        clientId: randomUUID(),
+        blocks: [{ type: 'text', text: 'Oldest root' }],
+      });
+      const middle = await store.createMessage(owner, channelId, key('postgres-history-middle'), {
+        clientId: randomUUID(),
+        blocks: [{ type: 'text', text: 'Middle root' }],
+      });
+      const newest = await store.createMessage(owner, channelId, key('postgres-history-newest'), {
+        clientId: randomUUID(),
+        blocks: [{ type: 'text', text: 'Newest root' }],
+      });
+
+      const firstPage = await store.listMessages(owner, channelId, null, 2);
+      expect(firstPage.items.map((message) => message.id)).toEqual([
+        middle.message.id,
+        newest.message.id,
+      ]);
+      const nextCursor = decodeCursor(firstPage.nextCursor ?? undefined);
+      expect(nextCursor).toBe(middle.message.sequence);
+
+      const secondPage = await store.listMessages(owner, channelId, nextCursor, 2);
+      expect(secondPage.items.map((message) => message.id)).toEqual([oldest.message.id]);
+      expect(secondPage.nextCursor).toBeNull();
+    } finally {
+      await admin.query(`DELETE FROM channels WHERE tenant_id = $1 AND id = $2`, [
+        IDS.tenant,
+        channelId,
+      ]);
     }
   });
 
@@ -383,7 +428,7 @@ describe.skipIf(!enabled)('PostgresStore integration', () => {
       replyCount: 1,
     });
 
-    const channelMessages = await store.listMessages(owner, IDS.backend, 0, 100);
+    const channelMessages = await store.listMessages(owner, IDS.backend, null, 100);
     expect(channelMessages.items.some((message) => message.id === root.message.id)).toBe(true);
     expect(channelMessages.items.some((message) => message.id === reply.message.id)).toBe(false);
     const thread = await store.getThread(owner, root.message.id, 0, 100);

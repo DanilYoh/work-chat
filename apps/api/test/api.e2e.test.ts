@@ -442,6 +442,47 @@ describe('messaging vertical slice', () => {
     expect(replyEvents[1].payload.threadRoot).toMatchObject({ id: rootId, replyCount: 2 });
   });
 
+  it('starts channel history from the newest roots and paginates backwards', async () => {
+    const oldestRoot = await sendMessage('Backward page: oldest root');
+    const secondOldestRoot = await sendMessage('Backward page: second oldest root');
+    const reply = await sendMessage('Backward page: reply between roots', {
+      threadRootId: secondOldestRoot.json().id,
+    });
+    const recentRoot = await sendMessage('Backward page: recent root');
+    const newestRoot = await sendMessage('Backward page: newest root');
+    const newUserHeaders = { 'x-user-id': DEMO_IDS.userRestricted };
+
+    const firstPage = await app.inject({
+      method: 'GET',
+      url: `/v1/channels/${DEMO_IDS.channelBackend}/messages?limit=2`,
+      headers: newUserHeaders,
+    });
+    expect(firstPage.statusCode).toBe(200);
+    expect(firstPage.json().items.map((message: any) => message.id)).toEqual([
+      recentRoot.json().id,
+      newestRoot.json().id,
+    ]);
+    expect(firstPage.json().nextCursor).toEqual(expect.any(String));
+
+    const arrivedAfterFirstPage = await sendMessage('Backward page: arrived after cursor');
+    const secondPage = await app.inject({
+      method: 'GET',
+      url: `/v1/channels/${DEMO_IDS.channelBackend}/messages?limit=2&cursor=${encodeURIComponent(firstPage.json().nextCursor)}`,
+      headers: newUserHeaders,
+    });
+    expect(secondPage.statusCode).toBe(200);
+    expect(secondPage.json().items.map((message: any) => message.id)).toEqual([
+      oldestRoot.json().id,
+      secondOldestRoot.json().id,
+    ]);
+    expect(secondPage.json().items.map((message: any) => message.id)).not.toContain(
+      reply.json().id,
+    );
+    expect(secondPage.json().items.map((message: any) => message.id)).not.toContain(
+      arrivedAfterFirstPage.json().id,
+    );
+  });
+
   it('does not allow replies to a deleted root', async () => {
     const root = await sendMessage('Closing thread');
     await app.inject({
@@ -723,7 +764,7 @@ describe('messaging vertical slice', () => {
     const beforeChannel = (await store.bootstrap(owner)).spaces
       .flatMap((space) => space.channels)
       .find((channel) => channel.id === DEMO_IDS.channelBackend)!;
-    const beforeMessages = await store.listMessages(owner, DEMO_IDS.channelBackend, 0, 500);
+    const beforeMessages = await store.listMessages(owner, DEMO_IDS.channelBackend, null, 500);
     const beforeEvents = await store.recoverUnpublishedEvents(500, DEMO_IDS.tenant);
     const memberships = (
       store as unknown as {
@@ -757,7 +798,7 @@ describe('messaging vertical slice', () => {
     const afterChannel = (await store.bootstrap(owner)).spaces
       .flatMap((space) => space.channels)
       .find((channel) => channel.id === DEMO_IDS.channelBackend)!;
-    const afterMessages = await store.listMessages(owner, DEMO_IDS.channelBackend, 0, 500);
+    const afterMessages = await store.listMessages(owner, DEMO_IDS.channelBackend, null, 500);
     const afterTarget = afterMessages.items.find((message) => message.id === target.message.id)!;
     expect(afterChannel.latestSequence).toBe(beforeChannel.latestSequence);
     expect(afterMessages.items).toHaveLength(beforeMessages.items.length);

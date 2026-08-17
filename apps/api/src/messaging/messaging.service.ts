@@ -27,7 +27,7 @@ export class MessagingService {
     return this.store.listMessages(
       context,
       channelId,
-      decodeCursor(cursor),
+      cursor ? decodeCursor(cursor) || null : null,
       Math.min(Math.max(limit, 1), 100),
     );
   }

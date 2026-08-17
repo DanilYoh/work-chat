@@ -401,38 +401,57 @@ describe('useWorkspace message state', () => {
     expect(hook.result.current.thread?.root.reactions).toEqual({ '👍': [ids.user] });
   });
 
-  it('paginates root messages and marks read through the last visible root sequence', async () => {
-    const firstReply = message({
-      id: '66666666-6666-4666-8666-666666666661',
-      threadRootId: ids.root,
-      sequence: 2,
-    });
-    const secondReply = message({
-      id: '66666666-6666-4666-8666-666666666662',
-      threadRootId: ids.root,
-      sequence: 3,
-    });
-    const secondRoot = message({
+  it('loads the newest roots first, prepends older pages, and does not regress read state', async () => {
+    const oldestRoot = message();
+    const olderRoot = message({
       id: '55555555-5555-4555-8555-555555555552',
-      sequence: 4,
-      blocks: [{ type: 'text', text: 'Вторая страница' }],
+      sequence: 2,
+      blocks: [{ type: 'text', text: 'Более старое сообщение' }],
     });
+    const recentRoot = message({
+      id: '55555555-5555-4555-8555-555555555553',
+      sequence: 4,
+      blocks: [{ type: 'text', text: 'Недавнее сообщение' }],
+    });
+    const newestRoot = message({
+      id: '55555555-5555-4555-8555-555555555554',
+      sequence: 5,
+      blocks: [{ type: 'text', text: 'Новейшее сообщение' }],
+    });
+    const initialBootstrap = bootstrap();
+    initialBootstrap.spaces[0]!.channels[0] = {
+      ...initialBootstrap.spaces[0]!.channels[0]!,
+      latestSequence: 5,
+      unreadCount: 5,
+    };
+    mocks.api.bootstrap.mockResolvedValueOnce(initialBootstrap);
     mocks.api.messages
-      .mockResolvedValueOnce({ items: [message(), firstReply], nextCursor: 'page-2' })
-      .mockResolvedValueOnce({ items: [secondReply, secondRoot], nextCursor: null });
+      .mockResolvedValueOnce({ items: [recentRoot, newestRoot], nextCursor: 'older-page' })
+      .mockResolvedValueOnce({ items: [oldestRoot, olderRoot], nextCursor: null });
 
-    const hook = await initializedWorkspace();
-    await waitFor(() => expect(hook.result.current.messageCursor).toBe('page-2'));
+    const hook = renderHook(() => useWorkspace());
+    await waitFor(() => expect(hook.result.current.messageCursor).toBe('older-page'));
+    expect(hook.result.current.messages.map((item) => item.id)).toEqual([
+      recentRoot.id,
+      newestRoot.id,
+    ]);
     await waitFor(() =>
-      expect(mocks.api.markRead).toHaveBeenCalledWith(ids.channel, { lastReadSequence: 1 }),
+      expect(mocks.api.markRead).toHaveBeenCalledWith(ids.channel, { lastReadSequence: 5 }),
     );
+    await waitFor(() => expect(hook.result.current.activeChannel?.lastReadSequence).toBe(5));
     mocks.api.markRead.mockClear();
 
     await act(() => hook.result.current.loadMoreMessages());
-    expect(mocks.api.messages).toHaveBeenNthCalledWith(2, ids.channel, 'page-2');
-    expect(hook.result.current.messages.map((item) => item.id)).toEqual([ids.root, secondRoot.id]);
+    expect(mocks.api.messages).toHaveBeenNthCalledWith(2, ids.channel, 'older-page');
+    expect(hook.result.current.messages.map((item) => item.id)).toEqual([
+      oldestRoot.id,
+      olderRoot.id,
+      recentRoot.id,
+      newestRoot.id,
+    ]);
     expect(hook.result.current.messageCursor).toBeNull();
-    expect(mocks.api.markRead).toHaveBeenCalledWith(ids.channel, { lastReadSequence: 4 });
+    expect(mocks.api.markRead).not.toHaveBeenCalled();
+    expect(hook.result.current.activeChannel?.lastReadSequence).toBe(5);
   });
 
   it('retries a failed channel load and clears the visible error', async () => {

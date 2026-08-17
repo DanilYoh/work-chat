@@ -191,15 +191,22 @@ export class MemoryStore implements Store {
   async listMessages(
     context: AppContext,
     channelId: string,
-    afterSequence: number,
+    beforeSequence: number | null,
     limit: number,
   ): Promise<CursorPage<Message>> {
     this.assertAccess(context, channelId);
-    const items = (this.messages.get(channelId) ?? [])
-      .filter((message) => message.threadRootId === null && message.sequence > afterSequence)
-      .slice(0, limit);
-    const last = items.at(-1);
-    return { items: structuredClone(items), nextCursor: last ? encodeCursor(last.sequence) : null };
+    const candidates = (this.messages.get(channelId) ?? []).filter(
+      (message) =>
+        message.threadRootId === null &&
+        (beforeSequence === null || message.sequence < beforeSequence),
+    );
+    const hasMore = candidates.length > limit;
+    const items = candidates.slice(-limit);
+    const oldest = items[0];
+    return {
+      items: structuredClone(items),
+      nextCursor: hasMore && oldest ? encodeCursor(oldest.sequence) : null,
+    };
   }
 
   async getThread(

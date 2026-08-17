@@ -22,7 +22,7 @@ export interface Store {
   listMessages(
     context: AppContext,
     channelId: string,
-    afterSequence: number,
+    beforeSequence: number | null,
     limit: number,
   ): Promise<CursorPage<Message>>;
   getThread(

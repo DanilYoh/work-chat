@@ -219,7 +219,7 @@ export class PostgresStore implements Store, OnModuleDestroy {
   async listMessages(
     context: AppContext,
     channelId: string,
-    afterSequence: number,
+    beforeSequence: number | null,
     limit: number,
   ): Promise<CursorPage<Message>> {
     return this.withTenant(context, async (client) => {
@@ -232,15 +232,19 @@ export class PostgresStore implements Store, OnModuleDestroy {
         WHERE m.tenant_id = $1
           AND m.channel_id = $2
           AND m.thread_root_id IS NULL
-          AND m.sequence > $3
-        ORDER BY m.sequence ASC
+          AND ($3::bigint IS NULL OR m.sequence < $3)
+        ORDER BY m.sequence DESC
         LIMIT $4
       `,
-        [context.tenantId, channelId, afterSequence, limit],
+        [context.tenantId, channelId, beforeSequence, limit + 1],
       );
-      const items = result.rows.map(toMessage);
-      const last = items.at(-1);
-      return { items, nextCursor: last ? encodeCursor(last.sequence) : null };
+      const hasMore = result.rows.length > limit;
+      const items = result.rows.slice(0, limit).map(toMessage).reverse();
+      const oldest = items[0];
+      return {
+        items,
+        nextCursor: hasMore && oldest ? encodeCursor(oldest.sequence) : null,
+      };
     });
   }
 
